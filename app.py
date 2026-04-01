@@ -22,7 +22,7 @@ STOP_WORDS = set([
     "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "an", "each"
 ])
 
-def clean_text_preserve_paragraphs(text):
+def clean_text_preserve_paragraphs(text: str) -> str:
     """ Bersihkan teks tapi pertahankan batas paragraf (\n\n) """
     text = re.sub(r'\[.*?\]', '', text)
     # Ganti single newline dengan spasi (untuk menyatukan kalimat pecah baris)
@@ -32,29 +32,29 @@ def clean_text_preserve_paragraphs(text):
     text = re.sub(r'[ \t]+', ' ', text)
     return text.strip()
 
-def extract_text_from_pdf(file):
+def extract_text_from_pdf(file) -> tuple[str, int]:
     """ Ekstraksi teks murni dari PDF sembari tetap mengamankan newline paragraf """
     reader = PyPDF2.PdfReader(file)
     text_content = ""
     for page in reader.pages:
         extracted = page.extract_text()
         if extracted:
-            text_content += extracted + "\n\n"
+            text_content += str(extracted) + "\n\n"
     return clean_text_preserve_paragraphs(text_content), len(reader.pages)
 
-def get_sentences(text):
+def get_sentences(text: str) -> list:
     """ Membagi teks menjadi kalimat, membuang yang amat pendek """
     sentences = re.split(r'(?<=[.!?])\s+', text)
     return [s.strip() for s in sentences if len(s.strip().split()) >= 5]
 
-def get_keywords(text, num=10):
+def get_keywords(text: str, num: int = 10) -> list:
     """ Mengekstrak kata kunci berfrekuensi paling tinggi """
     words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
     filtered_words = [w for w in words if w not in STOP_WORDS]
     counts = Counter(filtered_words)
     return [word for word, count in counts.most_common(num)]
 
-def generate_summary(text):
+def generate_summary(text: str) -> str:
     """ Menghasilkan ringkasan murni sepanjang 4-6 kalimat (Topik terbanyak) """
     sentences = get_sentences(text)
     keywords = get_keywords(text, 15)

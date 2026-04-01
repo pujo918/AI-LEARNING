@@ -54,11 +54,7 @@ export function UploadZone({ onFileSelect, selectedFile }: UploadZoneProps) {
     <div className="space-y-3">
       <AnimatePresence mode="wait">
         {selectedFile ? (
-          <motion.div
-            key="file-selected"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+          <div
             className="flex items-center gap-4 p-4 glass-card-bright rounded-xl border border-violet-500/20"
           >
             <div className="w-12 h-12 rounded-lg bg-violet-500/15 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
@@ -77,13 +73,9 @@ export function UploadZone({ onFileSelect, selectedFile }: UploadZoneProps) {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            key="dropzone"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+          <div
             {...getRootProps()}
             className={`
               relative cursor-pointer rounded-xl border-2 border-dashed p-10 text-center
@@ -98,9 +90,8 @@ export function UploadZone({ onFileSelect, selectedFile }: UploadZoneProps) {
           >
             <input {...getInputProps()} />
 
-            <motion.div
-              animate={isDragActive ? { scale: 1.1 } : { scale: 1 }}
-              className="flex flex-col items-center gap-4"
+            <div
+              className={`flex flex-col items-center gap-4 transition-transform duration-200 ${isDragActive ? "scale-110" : "scale-100"}`}
             >
               <div className={`
                 w-16 h-16 rounded-2xl flex items-center justify-center transition-colors
@@ -129,14 +120,14 @@ export function UploadZone({ onFileSelect, selectedFile }: UploadZoneProps) {
                   </p>
                 </div>
               )}
-            </motion.div>
+            </div>
 
             {/* Decorative corner dots */}
             <div className="absolute top-3 left-3 w-2 h-2 rounded-full bg-white/10" />
             <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-white/10" />
             <div className="absolute bottom-3 left-3 w-2 h-2 rounded-full bg-white/10" />
             <div className="absolute bottom-3 right-3 w-2 h-2 rounded-full bg-white/10" />
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
