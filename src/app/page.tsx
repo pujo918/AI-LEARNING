@@ -104,10 +104,6 @@ export default function LandingPage() {
         </Link>
       </nav>
 
-      <div className="text-black text-center bg-yellow-400 p-2 relative z-50 font-bold">
-        DEBUG: Berhasil Me-render Komponen Isi
-      </div>
-
       {/* Hero */}
       <section className="relative z-10 px-6 md:px-16 pt-16 md:pt-24 pb-20">
         <div className="max-w-5xl mx-auto text-center">
