@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"next dev\" \"python app.py\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.13",
+    "concurrently": "^9.2.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.5"
   }

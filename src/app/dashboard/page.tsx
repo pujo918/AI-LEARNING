@@ -69,9 +69,12 @@ export default function DashboardPage() {
         description: "Semua output telah dihasilkan oleh AI",
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Terjadi kesalahan";
+      let message = err instanceof Error ? err.message : "Terjadi kesalahan";
+      if (message.includes("Failed to fetch")) {
+        message = "Gagal terhubung ke server AI. Pastikan backend server Python (app.py) sudah dikerjakan/berjalan.";
+      }
       setError(message);
-      toast.error("Gagal memproses PDF", { description: message });
+      toast.error("Gagal memproses file PDF", { description: message });
     } finally {
       setIsProcessing(false);
     }
@@ -199,7 +202,7 @@ export default function DashboardPage() {
                   >
                     <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-red-300 font-medium">Gagal memproses</p>
+                      <p className="text-red-300 font-medium">Gagal memproses file</p>
                       <p className="text-red-400/60 text-xs mt-0.5">{error}</p>
                     </div>
                   </motion.div>

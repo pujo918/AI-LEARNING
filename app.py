@@ -55,26 +55,63 @@ def get_keywords(text: str, num: int = 10) -> list:
     return [word for word, count in counts.most_common(num)]
 
 def generate_summary(text: str) -> str:
-    """ Menghasilkan ringkasan murni sepanjang 4-6 kalimat (Topik terbanyak) """
+    """ Menghasilkan ringkasan komprehensif terstruktur (Awal, Poin Tengah, Akhir) """
     sentences = get_sentences(text)
-    keywords = get_keywords(text, 15)
+    keywords = get_keywords(text, 20)
     
-    if not sentences: 
-        return "Teks tidak mencukupi untuk dibuat ringkasan otomatis."
+    if len(sentences) < 5: 
+        return "Teks terlalu pendek untuk dibuat ringkasan terstruktur. Cobalah mengunggah dokumen yang lebih panjang."
     
-    scored_sentences = []
-    for s in sentences:
-        score = sum(1 for kw in keywords if kw in s.lower())
-        scored_sentences.append((score, s))
+    # Fungsi pembantu untuk menilai kalimat
+    def score_sentence(sentence):
+        # 1. Skor dari jumlah kata kunci
+        kw_score = sum(3 for kw in keywords[:5] if kw in sentence.lower()) + sum(1 for kw in keywords[5:] if kw in sentence.lower())
         
-    scored_sentences.sort(key=lambda x: x[0], reverse=True)
-    # Pilih 4 hingga 6 kalimat terbaik
-    num_sentences = min(6, max(4, len(sentences)//3))
-    top_sentences = [s for score, s in scored_sentences[:num_sentences]]
+        # 2. Penalti jika terlalu pendek atau terlalu panjang
+        word_count = len(sentence.split())
+        length_penalty = 0
+        if word_count < 8: length_penalty = -10
+        elif word_count > 45: length_penalty = -5
+        
+        return kw_score + length_penalty
+
+    # Membagi kalimat menjadi 3 area: 20% Awal, 60% Tengah, 20% Akhir
+    intro_end = max(1, int(len(sentences) * 0.2))
+    concl_start = max(intro_end + 1, int(len(sentences) * 0.8))
     
-    # Sambungkan balik berdasarkan urutan alur asli
-    original_order = [s for s in sentences if s in top_sentences]
-    return " ".join(original_order)
+    intro_sentences = sentences[:intro_end]
+    body_sentences = sentences[intro_end:concl_start]
+    conclusion_sentences = sentences[concl_start:]
+    
+    if not body_sentences:
+        body_sentences = sentences
+        
+    # 1. Pilih kalimat Pendahuluan terbaik
+    intro_scored = [(score_sentence(s), s) for s in intro_sentences]
+    intro_best = sorted(intro_scored, key=lambda x: x[0], reverse=True)[0][1] if intro_scored else ""
+    
+    # 2. Pilih poin utama secara dinamis menyesuaikan panjang dokumen (1 poin per 8 kalimat, max 10, min 3)
+    num_body_sentences = min(10, max(3, len(sentences) // 8))
+    
+    body_scored = [(score_sentence(s), s) for s in body_sentences]
+    body_best = [s for score, s in sorted(body_scored, key=lambda x: x[0], reverse=True)[:num_body_sentences]]
+    body_best = [s for s in body_sentences if s in body_best] # Kembalikan ke urutan kronologis
+    
+    # 3. Pilih kalimat Kesimpulan terbaik
+    concl_scored = [(score_sentence(s), s) for s in conclusion_sentences]
+    concl_best = sorted(concl_scored, key=lambda x: x[0], reverse=True)[0][1] if concl_scored else ""
+    
+    # Menyusun format output
+    summary_parts = []
+    if intro_best:
+        summary_parts.append(f"📌 PENGANTAR:\n{intro_best}")
+    if body_best:
+        body_bullets = "\n".join([f"• {s}" for s in body_best])
+        summary_parts.append(f"💡 POIN UTAMA:\n{body_bullets}")
+    if concl_best:
+        summary_parts.append(f"🎯 KESIMPULAN:\n{concl_best}")
+        
+    return "\n\n".join(summary_parts)
 
 def generate_slides(text):
     """ Membuat Slide Terstruktur: 1 Paragraf -> Judul (Kalimat 1) & Bullets (Kalimat 2-5) """
@@ -198,29 +235,42 @@ def generate_discussion(text):
 
 @app.route('/api/process-pdf', methods=['POST'])
 def process_pdf():
+    print("--- Received PDF Processing Request ---")
     if 'pdf' not in request.files:
-        return jsonify({"error": "Tidak ada file PDF yang dikirim"}), 400
+        print("Error: No 'pdf' file in request.files")
+        return jsonify({"error": "Tidak ada file PDF yang dikirim. Pastikan field name adalah 'pdf'."}), 400
     
     file = request.files['pdf']
     options_raw = request.form.get('options', '{}')
     
     if file.filename == '':
+        print("Error: Empty filename")
         return jsonify({"error": "Nama file kosong"}), 400
 
     if not file.filename.lower().endswith('.pdf'):
+        print(f"Error: Invalid file type ({file.filename})")
         return jsonify({"error": "Hanya menerima file PDF"}), 400
 
+    print(f"File Name: {file.filename}")
+    print(f"Options: {options_raw}")
+
     try:
+        # Ensure we're at the start of the file
+        file.seek(0)
+        
         # 1. Ekstrasi Teks Riil
         text, num_pages = extract_text_from_pdf(file)
         word_count = len(text.split())
         
+        print(f"Extracted: {num_pages} pages, {word_count} words")
+        
         # Guard apabila PDF merupakan Image/Scan (tidak ada Text Layer)
         if word_count < 10:
+             print("Warning: Content too short or scanned (word_count < 10)")
              return jsonify({
-                 "summary": "Gagal. Dokumen terlalu pendek atau berformat gambar scan seutuhnya (PDF Image).",
+                 "summary": "Mohon maaf, sistem gagal mendeteksi teks dalam dokumen ini. Kemungkinan dokumen Anda adalah hasil scan (berbentuk gambar) atau terlalu pendek. Sistem ini memerlukan teks asli (copyable) agar bisa diringkas.",
                  "slides": [], "quiz": [], "discussion": [],
-                 "metadata": {"wordCount": word_count, "pageCount": num_pages, "topic": "Unknown", "processedAt": "Sekarang"}
+                 "metadata": {"wordCount": word_count, "pageCount": num_pages, "topic": "Unknown", "processedAt": "Gagal (Teks Kosong)"}
              })
         
         # 2. Ambil preferensi opsi client 
@@ -237,6 +287,7 @@ def process_pdf():
         topic_title = ", ".join(keywords).title() if keywords else "Dokumen Umum"
         
         # 4. Return Output persis seperti skema Frontend `ResultTabs.tsx`
+        print("Success: Generated results sent back to client")
         return jsonify({
             "summary": summary_result,
             "slides": slides_result,
@@ -246,13 +297,15 @@ def process_pdf():
                 "wordCount": word_count,
                 "pageCount": num_pages,
                 "topic": topic_title,
-                "processedAt": "Sukses"
+                "processedAt": "Sukses pada " + str(random.randint(10, 59)) + " detik terakhir" # Mocking time
             }
         })
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        print(f"Exception during processing: {str(e)}")
+        return jsonify({"error": f"Kesalahan Sistem: {str(e)}"}), 500
 
 if __name__ == '__main__':
+    print("AI Learning Backend running on port 5000...")
     app.run(host='0.0.0.0', port=5000, debug=True)
